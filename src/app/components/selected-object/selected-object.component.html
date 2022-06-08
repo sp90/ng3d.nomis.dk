@@ -1,0 +1,34 @@
+hello
+<div class="selected-wrap" *ngIf="selectedObj$ | async as selectedObj">
+  {{ selectedObj | json }}
+
+  <input
+    type="number"
+    matInput
+    min="-100"
+    max="100"
+    step="1"
+    [(ngModel)]="selectedObj.position.x"
+  />
+  <!-- <mat-slider
+    [(ngModel)]="selectedObj.position.x"
+    tickInterval="1"
+    step="1"
+    min="0"
+    max="100"
+  ></mat-slider>
+  <mat-slider
+    [(ngModel)]="selectedObj.position.y"
+    tickInterval="1"
+    step="1"
+    min="0"
+    max="100"
+  ></mat-slider>
+  <mat-slider
+    [(ngModel)]="selectedObj.position.z"
+    tickInterval="1"
+    step="1"
+    min="0"
+    max="100"
+  ></mat-slider> -->
+</div>

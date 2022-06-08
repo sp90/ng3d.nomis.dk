@@ -1,0 +1,35 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  z-index: 100;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40px;
+  height: 100vh;
+}
+
+.action-bar {
+  height: 100%;
+  background-color: rgba(#000, 0.4);
+  overflow: hidden;
+}
+
+.action-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  line-height: 40px;
+  padding: 10px 0;
+  color: #fff;
+  background-color: transparent;
+  border-bottom: 1px solid #696969;
+  transition: background-color 200ms linear;
+  cursor: pointer;
+
+  &:hover {
+    background-color: rgba(#000, 0.2);
+  }
+}
