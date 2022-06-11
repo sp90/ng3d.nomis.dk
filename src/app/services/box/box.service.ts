@@ -55,6 +55,8 @@ export class BoxService {
     this.itemIndex += 1;
 
     this.SceneState.addToScene(mesh);
+
+    return mesh;
   }
 
   // addBufferGeometry(color = 0xff0000) {

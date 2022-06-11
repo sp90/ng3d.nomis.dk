@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { BoxService } from '@services/box/box.service';
 import { CamerasState } from '@states/cameras/cameras.state';
 import { SceneState } from '@states/scene/scene.state';
 import gsap from 'gsap';
@@ -24,27 +25,41 @@ export class PlayerState {
 
   player?: Mesh;
   camera = this.CameraState.mainCamera;
-  cameraDistance = 5;
+  cameraDistance = {
+    y: 7,
+    x: 5,
+    z: 5,
+  };
+  playerBottom = 0;
 
   constructor(
     private SceneState: SceneState,
-    private CameraState: CamerasState
+    private CameraState: CamerasState,
+    private BoxService: BoxService
   ) {}
 
   readyPlayer() {
     const _self = this;
     const material = new MeshStandardMaterial({ color: new Color('teal') });
+    const playerHeight = 2;
 
-    this.player = new Mesh(new BoxGeometry(0.5, 2, 0.4, 2, 2, 2), material);
+    this.player = new Mesh(
+      new BoxGeometry(0.5, playerHeight, 0.4, 2, 2, 2),
+      material
+    );
+
+    this.playerBottom = playerHeight / 2;
+
     this.player.castShadow = true;
     this.player.receiveShadow = true;
     this.player.position.x = 0;
-    this.player.position.y = 0;
+    this.player.position.y = this.playerBottom;
     this.player.position.z = 0;
     this.player.userData = {
       noIntersect: true,
     };
 
+    this.addCollisionTestBox();
     this.SceneState.addToScene(this.player);
     this.SceneState.addToScene(this.camera);
     this.fixedCameraPosToPlayer(this.camera, this.player);
@@ -66,6 +81,17 @@ export class PlayerState {
     return this.player;
   }
 
+  addCollisionTestBox() {
+    const box = this.BoxService.addBox(0xff0000, {
+      width: 3,
+      height: 2,
+      depth: 3,
+    });
+
+    box.position.x = 10;
+    box.position.z = 4;
+  }
+
   movePlayerTo(event: MouseEvent) {
     this.lastClickedPointer.x = (event.clientX / window.innerWidth) * 2 - 1;
     this.lastClickedPointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -80,20 +106,23 @@ export class PlayerState {
 
     let i = intersects.length;
     while (i--) {
-      if (intersects[0].object.userData['isFloor']) {
+      if (intersects[i].object.userData['isFloor']) {
         const vector = new Vector3().copy(intersects[0].point);
+        const vectorRoundY = Math.round(vector.y * 10) / 10 + this.playerBottom;
 
         if (this.player && this.camera) {
           gsap.to(this.player.position, {
             duration: 0.5,
             x: vector.x,
+            y: vectorRoundY,
             z: vector.z,
           });
 
           gsap.to(this.camera.position, {
             duration: 0.5,
-            x: vector.x + this.cameraDistance,
-            z: vector.z + this.cameraDistance,
+            x: vector.x + this.cameraDistance.x,
+            y: vectorRoundY + this.cameraDistance.y,
+            z: vector.z + this.cameraDistance.z,
           });
         }
       }
@@ -105,9 +134,9 @@ export class PlayerState {
   }
 
   fixedCameraPosToPlayer(camera: PerspectiveCamera, player: Mesh) {
-    camera.position.x = player.position.x + this.cameraDistance;
-    camera.position.y = player.position.y + this.cameraDistance + 2;
-    camera.position.z = player.position.z + this.cameraDistance;
+    camera.position.x = player.position.x + this.cameraDistance.x;
+    camera.position.y = player.position.y + this.cameraDistance.y;
+    camera.position.z = player.position.z + this.cameraDistance.z;
 
     camera.lookAt(player.position);
 

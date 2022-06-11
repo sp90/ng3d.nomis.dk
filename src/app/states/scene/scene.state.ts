@@ -46,7 +46,7 @@ export class SceneState {
     const planeGeometry = new PlaneGeometry(100, 100, 100, 100);
     const plane = new Mesh(planeGeometry, planeMaterial);
 
-    plane.position.y = -0.5;
+    plane.position.y = 0;
     plane.rotation.x = -Math.PI / 2;
     plane.receiveShadow = true;
     plane.userData = {
