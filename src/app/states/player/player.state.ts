@@ -84,12 +84,16 @@ export class PlayerState {
   addCollisionTestBox() {
     const box = this.BoxService.addBox(0xff0000, {
       width: 3,
-      height: 2,
+      height: 0.5,
       depth: 3,
     });
 
-    box.position.x = 10;
-    box.position.z = 4;
+    box.position.x = 6;
+    box.position.y = 0.25;
+    box.position.z = -6;
+    box.userData = {
+      isFloor: true,
+    };
   }
 
   movePlayerTo(event: MouseEvent) {
@@ -106,8 +110,8 @@ export class PlayerState {
 
     let i = intersects.length;
     while (i--) {
-      if (intersects[i].object.userData['isFloor']) {
-        const vector = new Vector3().copy(intersects[0].point);
+      if (intersects[i].object.userData['isFloor'] === true) {
+        const vector = new Vector3().copy(intersects[i].point);
         const vectorRoundY = Math.round(vector.y * 10) / 10 + this.playerBottom;
 
         if (this.player && this.camera) {

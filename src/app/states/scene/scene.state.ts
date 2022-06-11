@@ -1,9 +1,9 @@
 import { Injectable } from '@angular/core';
 import { CamerasState } from '@states/cameras/cameras.state';
 import {
-  AmbientLight,
   Color,
   DirectionalLight,
+  HemisphereLight,
   Mesh,
   MeshStandardMaterial,
   Object3D,
@@ -22,8 +22,6 @@ export class SceneState {
   constructor(private CamerasState: CamerasState) {}
 
   addBaseScene() {
-    const ambientLight = new AmbientLight(0x505050);
-    const directionalLight = this.addDirLight();
     const plane = this.addBasePlane();
 
     this.mainCamera.lookAt(plane.position);
@@ -31,8 +29,7 @@ export class SceneState {
 
     this.addToScene(this.mainCamera);
     this.addToScene(plane);
-    this.addToScene(directionalLight);
-    this.addToScene(ambientLight);
+    this.addSunLight();
   }
 
   addToScene(object: Object3D, lookAt: boolean = false) {
@@ -57,18 +54,30 @@ export class SceneState {
     return plane;
   }
 
-  private addDirLight() {
-    const directionalLight = new DirectionalLight(0xffffff, 0.5);
+  private addSunLight() {
+    var hemiLight = new HemisphereLight(0xffffff, 0xffffff, 0.8);
+    hemiLight.color.setHSL(0.6, 0.75, 0.5);
+    hemiLight.groundColor.setHSL(0.095, 0.5, 0.5);
+    hemiLight.position.set(0, 500, 0);
 
-    directionalLight.position.set(4, 6, 3);
-    directionalLight.target.position.set(0, 0, 0);
-    directionalLight.intensity = 0.4;
-    directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 1024;
-    directionalLight.shadow.mapSize.height = 1024;
-    directionalLight.shadow.camera.near = 1;
-    directionalLight.shadow.camera.far = 1500;
+    this.mainScene.add(hemiLight);
 
-    return directionalLight;
+    const dirLight = new DirectionalLight(0xffffff, 1);
+
+    dirLight.position.set(-1, 0.75, 1);
+    dirLight.position.multiplyScalar(5);
+    dirLight.intensity = 0.4;
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 1024;
+    dirLight.shadow.mapSize.height = 1024;
+    let d = 25;
+    dirLight.shadow.camera.left = -d;
+    dirLight.shadow.camera.right = d;
+    dirLight.shadow.camera.top = d;
+    dirLight.shadow.camera.bottom = -d;
+    dirLight.shadow.camera.near = 1;
+    dirLight.shadow.camera.far = 15000;
+
+    this.mainScene.add(dirLight);
   }
 }
