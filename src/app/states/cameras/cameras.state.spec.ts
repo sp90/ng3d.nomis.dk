@@ -1,12 +1,12 @@
 import { TestBed } from '@angular/core/testing';
-import { ActionControlsState } from './action-controls.state';
+import { CamerasState } from './cameras.state';
 
-describe('ActionControlsState', () => {
-  let service: ActionControlsState;
+describe('CamerasState', () => {
+  let service: CamerasState;
 
   beforeEach(() => {
     TestBed.configureTestingModule({});
-    service = TestBed.inject(ActionControlsState);
+    service = TestBed.inject(CamerasState);
   });
 
   it('should be created', () => {

@@ -14,8 +14,4 @@ export class ActionsComponent implements OnInit {
   addBox() {
     this.BoxService.addBox();
   }
-
-  // addBufferGeometry() {
-  //   this.BoxService.addBufferGeometry();
-  // }
 }

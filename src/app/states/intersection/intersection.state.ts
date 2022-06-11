@@ -1,7 +1,5 @@
 import { Injectable } from '@angular/core';
-import { ActionControlsState } from '@states/action-controls/action-controls.state';
 import { SelectedObjectState } from '@states/selected-object/selected-object.state';
-import { tap } from 'rxjs';
 import { PerspectiveCamera, Raycaster, Scene, Vector2 } from 'three';
 
 export type TStatesIncoming = 'focus' | 'hover' | 'drag';
@@ -10,44 +8,26 @@ export type TStatesIncoming = 'focus' | 'hover' | 'drag';
   providedIn: 'root',
 })
 export class IntersectionState {
-  private INTERSECTED?: any;
+  private raycaster = new Raycaster();
 
-  onDragStart$ = this.ActionControlsState.onDragStart$
-    .pipe(tap(() => this.setIntersectedState('drag', true)))
-    .subscribe();
+  INTERSECTED?: any;
 
-  onDragEnd$ = this.ActionControlsState.onDragEnd$
-    .pipe(tap(() => this.setIntersectedState('drag', false)))
-    .subscribe();
+  constructor(private SelectedObjectState: SelectedObjectState) {}
 
-  constructor(
-    private SelectedObjectState: SelectedObjectState,
-    private ActionControlsState: ActionControlsState
-  ) {}
-
-  onIntersectedClick() {
-    if (this.INTERSECTED) {
-      const activeSelectedObj = this.SelectedObjectState.getSelectedObj();
-
-      if (activeSelectedObj?.id === this.INTERSECTED?.id) {
-        this.ActionControlsState.onDrag(this.INTERSECTED);
-      } else {
-        this.setIntersectedState('focus', false, activeSelectedObj);
-        this.SelectedObjectState.setSelectedObj(this.INTERSECTED);
-        this.setIntersectedState('focus', true);
-      }
-    }
+  isIntersecting() {
+    return (
+      this.SelectedObjectState.getSelectedObj()?.id === this.INTERSECTED?.id
+    );
   }
 
   raycasterCheckIntersects(
-    raycaster: Raycaster,
     pointer: Vector2,
     camera: PerspectiveCamera,
     scene: Scene
   ) {
-    raycaster.setFromCamera(pointer, camera);
+    this.raycaster.setFromCamera(pointer, camera);
 
-    const intersects = raycaster.intersectObjects(scene.children, false);
+    const intersects = this.raycaster.intersectObjects(scene.children, false);
 
     if (
       intersects.length > 0 &&

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { CanvasState } from '@states/canvas/canvas.state';
+import { SceneState } from '@states/scene/scene.state';
 import { BoxGeometry, Color, Mesh, MeshStandardMaterial } from 'three';
 
 const DEFAULT_SIZE = {
@@ -21,7 +21,7 @@ export class BoxService {
   itemIndex = 0;
   startPos = 0;
 
-  constructor(private CanvasState: CanvasState) {}
+  constructor(private SceneState: SceneState) {}
 
   addBox(color = 0xff0000, size = DEFAULT_SIZE, segments = DEFAULT_SEGMENTS) {
     const material = new MeshStandardMaterial({ color: new Color(color) });
@@ -54,7 +54,7 @@ export class BoxService {
     this.startPos += 3;
     this.itemIndex += 1;
 
-    this.CanvasState.addToScene(mesh);
+    this.SceneState.addToScene(mesh);
   }
 
   // addBufferGeometry(color = 0xff0000) {
