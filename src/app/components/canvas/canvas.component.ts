@@ -1,12 +1,10 @@
 import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
 import { CamerasState } from '@states/cameras/cameras.state';
 import { CanvasState } from '@states/canvas/canvas.state';
-import { IntersectionState } from '@states/intersection/intersection.state';
 import { PlayerState } from '@states/player/player.state';
 import { SceneState } from '@states/scene/scene.state';
-import { SelectedObjectState } from '@states/selected-object/selected-object.state';
-import { ViewControlsState } from '@states/view-controls/view-controls.state';
-import { Vector2, WebGLRenderer } from 'three';
+import TWEEN from '@tweenjs/tween.js';
+import { WebGLRenderer } from 'three';
 
 @Component({
   selector: 'app-canvas',
@@ -16,13 +14,8 @@ import { Vector2, WebGLRenderer } from 'three';
 export class CanvasComponent implements AfterViewInit {
   @ViewChild('canvas') canvas?: ElementRef<HTMLCanvasElement>;
 
-  private pointer = new Vector2(0, 0);
-
   constructor(
     private CanvasState: CanvasState,
-    private ViewControlsState: ViewControlsState,
-    private IntersectionState: IntersectionState,
-    private SelectedObjectState: SelectedObjectState,
     private CameraState: CamerasState,
     private PlayerState: PlayerState,
     private SceneState: SceneState
@@ -43,6 +36,8 @@ export class CanvasComponent implements AfterViewInit {
             _self.SceneState.mainScene,
             _self.CameraState.mainCamera
           );
+
+          TWEEN.update();
 
           window.requestAnimationFrame(tick);
         }
