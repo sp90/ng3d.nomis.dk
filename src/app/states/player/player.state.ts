@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { BoxService } from '@services/box/box.service';
 import { CamerasState } from '@states/cameras/cameras.state';
 import { SceneState } from '@states/scene/scene.state';
+import { Body, Sphere } from 'cannon-es';
 import {
   BoxGeometry,
   Color,
@@ -40,12 +41,19 @@ export class PlayerState {
       material
     );
 
+    this.initPlayerBasicSettings();
+
+    const shape = new Sphere(1);
+    const body = new Body({
+      mass: 1,
+      shape,
+    });
+
     this.playerBottom = playerHeight / 2;
 
     this.addCollisionTestBox();
-    this.initPlayerBasicSettings();
     this.initCameraPos(this.camera, this.player);
-    this.SceneState.addToScene(this.player);
+    this.SceneState.addToScene(this.player, body, ['y']);
     this.SceneState.addToScene(this.camera);
     this.PlayerMovementState.initPlayerMovement(this.player, this.playerBottom);
 
@@ -72,7 +80,7 @@ export class PlayerState {
       this.player.castShadow = true;
       this.player.receiveShadow = true;
       this.player.position.x = 0;
-      this.player.position.y = this.playerBottom;
+      this.player.position.y = 1;
       this.player.position.z = 0;
       this.player.userData = {
         noIntersect: true,

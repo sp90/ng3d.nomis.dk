@@ -3,7 +3,6 @@ import { CamerasState } from '@states/cameras/cameras.state';
 import { CanvasState } from '@states/canvas/canvas.state';
 import { PlayerState } from '@states/player/player.state';
 import { SceneState } from '@states/scene/scene.state';
-import TWEEN from '@tweenjs/tween.js';
 import { WebGLRenderer } from 'three';
 
 @Component({
@@ -13,6 +12,8 @@ import { WebGLRenderer } from 'three';
 })
 export class CanvasComponent implements AfterViewInit {
   @ViewChild('canvas') canvas?: ElementRef<HTMLCanvasElement>;
+
+  world = this.SceneState.mainWorld;
 
   constructor(
     private CanvasState: CanvasState,
@@ -37,7 +38,15 @@ export class CanvasComponent implements AfterViewInit {
             _self.CameraState.mainCamera
           );
 
-          TWEEN.update();
+          // Run the simulation independently of framerate every 1 / 60 ms
+          _self.world.fixedStep();
+          _self.SceneState.digestWorld();
+
+          if (_self.PlayerState.player?.position) {
+            _self.CameraState.setPosRelativeToPlayer(
+              _self.PlayerState.player.position
+            );
+          }
 
           window.requestAnimationFrame(tick);
         }

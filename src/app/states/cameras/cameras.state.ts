@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { PerspectiveCamera } from 'three';
+import { PerspectiveCamera, Vector3 } from 'three';
 
 export interface ISceneInitOptions {
   fov: number;
@@ -22,11 +22,23 @@ export const DEFAULT_CAMERA_OPTIONS: ISceneInitOptions = {
 })
 export class CamerasState {
   mainCamera = this.getDefaultCamera();
+  cameraDistance = {
+    y: 7,
+    x: 5,
+    z: 5,
+  };
 
   constructor() {
     this.mainCamera.position.z = 8;
     this.mainCamera.position.y = 8;
     this.mainCamera.position.x = 8;
+  }
+
+  setPosRelativeToPlayer(playerPos: Vector3) {
+    const x = playerPos.x + this.cameraDistance.x;
+    const y = playerPos.y + this.cameraDistance.y;
+    const z = playerPos.z + this.cameraDistance.z;
+    this.mainCamera.position.set(x, y, z);
   }
 
   getDefaultCamera(): PerspectiveCamera {

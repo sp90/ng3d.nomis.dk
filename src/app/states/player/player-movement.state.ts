@@ -18,14 +18,9 @@ export class PlayerMovementState {
   playerEasing = TWEEN.Easing.Linear.None;
   playerBottom = 0;
   camera = this.CameraState.mainCamera;
-  cameraDistance = {
-    y: 7,
-    x: 5,
-    z: 5,
-  };
 
   playerMoveTween?: gsap.core.Tween | null;
-  cameraMoveTween?: gsap.core.Tween | null;
+  // cameraMoveTween?: gsap.core.Tween | null;
 
   constructor(
     private SceneState: SceneState,
@@ -58,6 +53,10 @@ export class PlayerMovementState {
     document.addEventListener('pointerup', (event: MouseEvent) => {
       _self.mouseIsDown = false;
     });
+
+    // document.addEventListener('keydown', (event: KeyboardEvent) => {
+    //   _self.mouseIsDown = false;
+    // });
   }
 
   movePlayerTo(event: MouseEvent) {
@@ -89,16 +88,6 @@ export class PlayerMovementState {
             x: vector.x,
             y: vectorRoundY,
             z: vector.z,
-          });
-
-          this.cameraMoveTween = null;
-          this.cameraMoveTween = gsap.to(this.camera.position, {
-            duration: (0.36 / 2.2) * distance,
-            ease: Linear.easeNone,
-            overwrite: true,
-            x: vector.x + this.cameraDistance.x,
-            y: vectorRoundY + this.cameraDistance.y,
-            z: vector.z + this.cameraDistance.z,
           });
         }
       }

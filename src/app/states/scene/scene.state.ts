@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { CamerasState } from '@states/cameras/cameras.state';
+import { Body, Plane, Vec3, World } from 'cannon-es';
 import {
   Color,
   DirectionalLight,
@@ -18,6 +19,11 @@ export class SceneState {
   private mainCamera = this.CamerasState.mainCamera;
 
   mainScene = new Scene();
+  mainWorld = new World({
+    gravity: new Vec3(0, -9.82, 0), // m/s²
+  });
+
+  sceneUpdates: Function[] = [];
 
   constructor(private CamerasState: CamerasState) {}
 
@@ -28,20 +34,47 @@ export class SceneState {
     this.mainScene.background = new Color(0x3333ff);
 
     this.addToScene(this.mainCamera);
-    this.addToScene(plane);
     this.addSunLight();
   }
 
-  addToScene(object: Object3D, lookAt: boolean = false) {
+  addToScene(object: Object3D, objectBody?: Body, props?: string[]) {
     this.mainScene.add(object);
 
-    lookAt && this.mainCamera.lookAt(object.position);
+    if (objectBody) {
+      this.mainWorld.addBody(objectBody);
+      this.sceneUpdates.push(() => {
+        props?.forEach((prop) => {
+          // @ts-ignore
+          object.position[prop] = objectBody.position[prop];
+        });
+
+        object.quaternion.copy(objectBody.quaternion as any);
+      });
+    }
+  }
+
+  digestWorld() {
+    let i = this.sceneUpdates.length;
+
+    while (i--) {
+      this.sceneUpdates[i]();
+
+      if (i <= 0) {
+        break;
+      }
+    }
   }
 
   private addBasePlane() {
     const planeMaterial = new MeshStandardMaterial({ color: '0x999999' });
     const planeGeometry = new PlaneGeometry(100, 100, 100, 100);
     const plane = new Mesh(planeGeometry, planeMaterial);
+    const planeBody = new Body({
+      type: Body.STATIC, // can also be achieved by setting the mass to 0
+      shape: new Plane(),
+    });
+
+    planeBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0); // make it face up
 
     plane.position.y = 0;
     plane.rotation.x = -Math.PI / 2;
@@ -50,6 +83,9 @@ export class SceneState {
       isFloor: true,
       noIntersect: true,
     };
+
+    this.addToScene(plane);
+    this.mainWorld.addBody(planeBody);
 
     return plane;
   }
