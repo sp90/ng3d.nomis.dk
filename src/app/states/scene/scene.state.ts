@@ -2,6 +2,8 @@ import { Injectable } from '@angular/core';
 import { CamerasState } from '@states/cameras/cameras.state';
 import { Body, Plane, Vec3, World } from 'cannon-es';
 import {
+  Box3,
+  BoxGeometry,
   Color,
   DirectionalLight,
   HemisphereLight,
@@ -12,6 +14,11 @@ import {
   Scene,
 } from 'three';
 
+export interface IStaticObjects {
+  object: Object3D;
+  bbox: Box3;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -20,36 +27,41 @@ export class SceneState {
 
   mainScene = new Scene();
   mainWorld = new World({
-    gravity: new Vec3(0, -9.82, 0), // m/s²
+    gravity: new Vec3(0, -10, 0), // m/s²
   });
 
+  sceneObjectsToUpdate: any[] = [];
+  sceneObjectsCheckCollision: any[] = [];
   sceneUpdates: Function[] = [];
 
-  constructor(private CamerasState: CamerasState) {}
+  constructor(private CamerasState: CamerasState) {
+    this.mainWorld.quatNormalizeSkip = 0;
+    this.mainWorld.quatNormalizeFast = false;
+    this.mainWorld.defaultContactMaterial.contactEquationStiffness = 1e9;
+  }
 
   addBaseScene() {
-    const plane = this.addBasePlane();
-
-    this.mainCamera.lookAt(plane.position);
     this.mainScene.background = new Color(0x3333ff);
 
+    this.addCollisionTestBox();
+    this.addBasePlane();
     this.addToScene(this.mainCamera);
     this.addSunLight();
   }
 
-  addToScene(object: Object3D, objectBody?: Body, props?: string[]) {
+  addToScene(object: Object3D, objectBody?: Body) {
     this.mainScene.add(object);
 
     if (objectBody) {
       this.mainWorld.addBody(objectBody);
-      this.sceneUpdates.push(() => {
-        props?.forEach((prop) => {
-          // @ts-ignore
-          object.position[prop] = objectBody.position[prop];
-        });
+    }
+  }
 
-        object.quaternion.copy(objectBody.quaternion as any);
-      });
+  addPlayerToScene(object: Mesh, playerBox?: Box3) {
+    this.mainScene.add(object);
+
+    if (playerBox) {
+      this.sceneObjectsToUpdate.push({ mesh: object, box: playerBox });
     }
   }
 
@@ -65,12 +77,47 @@ export class SceneState {
     }
   }
 
+  digestObjects() {
+    let i = this.sceneObjectsToUpdate.length;
+
+    while (i--) {
+      this.sceneObjectsToUpdate[i].box
+        .copy(this.sceneObjectsToUpdate[i].mesh.geometry.boundingBox)
+        .applyMatrix4(this.sceneObjectsToUpdate[i].mesh.matrixWorld);
+
+      if (i <= 0) {
+        break;
+      }
+    }
+  }
+
+  private addCollisionTestBox() {
+    const material = new MeshStandardMaterial({ color: new Color(0xff0000) });
+    const box = new Box3();
+    const mesh = new Mesh(new BoxGeometry(3, 1, 3), material);
+
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.position.x = 6;
+    mesh.position.y = 0.5;
+    mesh.position.z = -6;
+    mesh.userData = {
+      isStatic: true,
+    };
+
+    mesh.geometry.computeBoundingBox();
+
+    this.addToScene(mesh);
+    this.sceneObjectsToUpdate.push({ mesh, box });
+    this.sceneObjectsCheckCollision.push({ mesh, box });
+  }
+
   private addBasePlane() {
     const planeMaterial = new MeshStandardMaterial({ color: '0x999999' });
     const planeGeometry = new PlaneGeometry(100, 100, 100, 100);
     const plane = new Mesh(planeGeometry, planeMaterial);
     const planeBody = new Body({
-      type: Body.STATIC, // can also be achieved by setting the mass to 0
+      mass: 0, // can also be achieved by setting the mass to 0
       shape: new Plane(),
     });
 
@@ -81,11 +128,9 @@ export class SceneState {
     plane.receiveShadow = true;
     plane.userData = {
       isFloor: true,
-      noIntersect: true,
     };
 
-    this.addToScene(plane);
-    this.mainWorld.addBody(planeBody);
+    this.addToScene(plane, planeBody);
 
     return plane;
   }

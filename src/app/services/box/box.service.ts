@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import { SceneState } from '@states/scene/scene.state';
 import { BoxGeometry, Color, Mesh, MeshStandardMaterial } from 'three';
 
 const DEFAULT_SIZE = {
@@ -18,10 +17,7 @@ const DEFAULT_SEGMENTS = {
   providedIn: 'root',
 })
 export class BoxService {
-  itemIndex = 0;
-  startPos = 0;
-
-  constructor(private SceneState: SceneState) {}
+  constructor() {}
 
   addBox(color = 0xff0000, size = DEFAULT_SIZE, segments = DEFAULT_SEGMENTS) {
     const material = new MeshStandardMaterial({ color: new Color(color) });
@@ -37,24 +33,8 @@ export class BoxService {
       material
     );
 
-    mesh.position.y = this.startPos;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-
-    // TODO - Remove in favour of custom gui based on raycasting
-    // this.GuiState.addFolder(
-    //   `box-${this.itemIndex}`,
-    //   mesh.position,
-    //   ['x', 'y', 'z'],
-    //   0,
-    //   5,
-    //   0.2
-    // );
-
-    this.startPos += 3;
-    this.itemIndex += 1;
-
-    this.SceneState.addToScene(mesh);
 
     return mesh;
   }
