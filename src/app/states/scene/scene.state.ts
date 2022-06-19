@@ -1,6 +1,16 @@
 import { Injectable } from '@angular/core';
 import { CamerasState } from '@states/cameras/cameras.state';
-import { Body, Plane, Vec3, World } from 'cannon-es';
+import {
+  Body,
+  Box,
+  ContactMaterial,
+  GSSolver,
+  Material,
+  NaiveBroadphase,
+  Plane,
+  Vec3,
+  World,
+} from 'cannon-es';
 import {
   Box3,
   BoxGeometry,
@@ -8,6 +18,7 @@ import {
   DirectionalLight,
   HemisphereLight,
   Mesh,
+  MeshLambertMaterial,
   MeshStandardMaterial,
   Object3D,
   PlaneGeometry,
@@ -27,63 +38,89 @@ export class SceneState {
 
   mainScene = new Scene();
   mainWorld = new World({
-    gravity: new Vec3(0, -10, 0), // m/s²
+    gravity: new Vec3(0, -9.82, 0), // m/s²
+    broadphase: new NaiveBroadphase(),
+    quatNormalizeSkip: 0,
+    quatNormalizeFast: false,
   });
 
-  sceneObjectsToUpdate: any[] = [];
-  sceneObjectsCheckCollision: any[] = [];
-  sceneUpdates: Function[] = [];
+  solver = new GSSolver();
+
+  physicsMaterial = new Material('slipperyMaterial');
+  solidMaterial = new Material('solidMaterial');
+  physicsContactMaterial = new ContactMaterial(
+    this.physicsMaterial,
+    this.physicsMaterial,
+    {
+      friction: 0.0,
+      restitution: 0.3,
+    }
+  );
+  solidContactMaterial = new ContactMaterial(
+    this.solidMaterial,
+    this.solidMaterial,
+    {
+      friction: 0.2,
+      restitution: 0.6,
+    }
+  );
+
+  objs: any[] = [];
 
   constructor(private CamerasState: CamerasState) {
-    this.mainWorld.quatNormalizeSkip = 0;
-    this.mainWorld.quatNormalizeFast = false;
+    this.mainWorld.addContactMaterial(this.physicsContactMaterial);
+    this.mainWorld.addContactMaterial(this.solidContactMaterial);
+    this.mainWorld.defaultContactMaterial = this.physicsContactMaterial;
     this.mainWorld.defaultContactMaterial.contactEquationStiffness = 1e9;
+    this.mainWorld.defaultContactMaterial.contactEquationRelaxation = 4;
+
+    this.solver.iterations = 3;
+    this.solver.tolerance = 0.1;
   }
 
   addBaseScene() {
     this.mainScene.background = new Color(0x3333ff);
 
-    this.addCollisionTestBox();
     this.addBasePlane();
+    this.addCollisionTestBox();
     this.addToScene(this.mainCamera);
     this.addSunLight();
   }
 
   addToScene(object: Object3D, objectBody?: Body) {
-    this.mainScene.add(object);
-
     if (objectBody) {
+      this.objs.push({
+        object,
+        objectBody,
+      });
       this.mainWorld.addBody(objectBody);
     }
-  }
 
-  addPlayerToScene(object: Mesh, playerBox?: Box3) {
     this.mainScene.add(object);
-
-    if (playerBox) {
-      this.sceneObjectsToUpdate.push({ mesh: object, box: playerBox });
-    }
   }
 
-  digestWorld() {
-    let i = this.sceneUpdates.length;
+  updatePhysics() {
+    // Perform a simulation step
+    this.mainWorld.fixedStep();
+
+    let i = this.objs.length;
 
     while (i--) {
-      this.sceneUpdates[i]();
+      const obj = this.objs[i].object;
+      const body = this.objs[i].objectBody;
 
-      if (i <= 0) {
-        break;
+      if (obj.userData['isPlayer']) {
+        obj.position.x = body.position.x;
+        obj.position.z = body.position.z;
+      } else if (
+        obj.userData['debug'] &&
+        typeof obj.userData['debug'] === 'function'
+      ) {
+        obj.userData['debug'](obj, body);
+      } else {
+        obj.position?.copy(body.position);
+        obj.quaternion?.copy(body.quaternion);
       }
-    }
-  }
-
-  digestObjects() {
-    let i = this.sceneObjectsToUpdate.length;
-
-    while (i--) {
-      this.sceneObjectsToUpdate[i].box
-        .copy(this.sceneObjectsToUpdate[i].mesh.geometry.boundingBox)
-        .applyMatrix4(this.sceneObjectsToUpdate[i].mesh.matrixWorld);
 
       if (i <= 0) {
         break;
@@ -92,24 +129,31 @@ export class SceneState {
   }
 
   private addCollisionTestBox() {
-    const material = new MeshStandardMaterial({ color: new Color(0xff0000) });
-    const box = new Box3();
-    const mesh = new Mesh(new BoxGeometry(3, 1, 3), material);
+    const size = [3, 6, 3];
+    const pos = [6, 0, -6];
+
+    const material = new MeshLambertMaterial({ color: 0x222222 });
+    const mesh = new Mesh(new BoxGeometry(size[0], size[1], size[2]), material);
 
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    mesh.position.x = 6;
-    mesh.position.y = 0.5;
-    mesh.position.z = -6;
-    mesh.userData = {
-      isStatic: true,
-    };
+    mesh.position.set(pos[0], pos[1], pos[2]);
 
-    mesh.geometry.computeBoundingBox();
+    const halfExtents = new Vec3(size[0], size[1], size[2]);
+    const boxShape = new Box(halfExtents);
+    const boxBody = new Body({
+      mass: 0,
+      shape: boxShape,
+      material: this.physicsMaterial,
+      position: new Vec3(pos[0], pos[1], pos[2]),
+    });
 
-    this.addToScene(mesh);
-    this.sceneObjectsToUpdate.push({ mesh, box });
-    this.sceneObjectsCheckCollision.push({ mesh, box });
+    // mesh.userData = {
+    //   debug: (obj: any, body: any) => {
+    //     console.log(obj.position);
+    //   },
+    // };
+    this.addToScene(mesh, boxBody);
   }
 
   private addBasePlane() {
@@ -117,14 +161,12 @@ export class SceneState {
     const planeGeometry = new PlaneGeometry(100, 100, 100, 100);
     const plane = new Mesh(planeGeometry, planeMaterial);
     const planeBody = new Body({
-      mass: 0, // can also be achieved by setting the mass to 0
+      mass: 0,
       shape: new Plane(),
+      material: this.physicsMaterial,
     });
 
     planeBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0); // make it face up
-
-    plane.position.y = 0;
-    plane.rotation.x = -Math.PI / 2;
     plane.receiveShadow = true;
     plane.userData = {
       isFloor: true,
