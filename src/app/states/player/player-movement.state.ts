@@ -44,52 +44,10 @@ export class PlayerMovementState {
 
     this.moveSub
       .pipe(
-        map((event) => {
-          if (event) {
-            // Kill animation
-            if (this.player && this.camera) {
-              this.lastClickedPointer.x =
-                (event.clientX / window.innerWidth) * 2 - 1;
-              this.lastClickedPointer.y =
-                -(event.clientY / window.innerHeight) * 2 + 1;
-
-              // update the picking ray with the camera and pointer position
-              this.raycaster.setFromCamera(
-                this.lastClickedPointer,
-                this.camera
-              );
-
-              // calculate objects intersecting the picking ray
-              const intersects = this.raycaster.intersectObjects(
-                this.SceneState.mainScene.children
-              );
-
-              let i = intersects.length;
-
-              while (i--) {
-                if (intersects[i].object.userData['isFloor'] === true) {
-                  const targetPos = new Vector3().copy(intersects[i].point);
-
-                  this.player.lookAt(
-                    targetPos.x,
-                    this.player.position.y,
-                    targetPos.z
-                  );
-
-                  return targetPos;
-                }
-
-                if (i <= 0) {
-                  break;
-                }
-              }
-            }
-          }
-
-          return null;
-        }),
+        throttleTime(20),
+        map(this.mapMouseEvent),
         throttleTime(50),
-        tap((event) => event && this.movePlayerTo(event))
+        tap(this.movePlayerTo)
       )
       .subscribe();
 
@@ -114,8 +72,49 @@ export class PlayerMovementState {
     });
   }
 
-  movePlayerTo(targetPos: Vector3) {
-    if (!this.player) {
+  mapMouseEvent(event: MouseEvent | null) {
+    if (event) {
+      // Kill animation
+      if (this.player && this.camera) {
+        this.lastClickedPointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+        this.lastClickedPointer.y =
+          -(event.clientY / window.innerHeight) * 2 + 1;
+
+        // update the picking ray with the camera and pointer position
+        this.raycaster.setFromCamera(this.lastClickedPointer, this.camera);
+
+        // calculate objects intersecting the picking ray
+        const intersects = this.raycaster.intersectObjects(
+          this.SceneState.mainScene.children
+        );
+
+        let i = intersects.length;
+
+        while (i--) {
+          if (intersects[i].object.userData['isFloor'] === true) {
+            const targetPos = new Vector3().copy(intersects[i].point);
+
+            this.player.lookAt(
+              targetPos.x,
+              this.player.position.y,
+              targetPos.z
+            );
+
+            return targetPos;
+          }
+
+          if (i <= 0) {
+            break;
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  movePlayerTo(targetPos: Vector3 | null) {
+    if (!this.player || !targetPos) {
       return;
     }
 
