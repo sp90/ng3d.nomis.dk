@@ -24,8 +24,9 @@ export class PlayerMovementState {
 
   playerIsMoving = false;
   targetPos: Vector3 | null = null;
+  dirVector = new Vector3();
   playerMoveTween?: Tween<Vector3> | null;
-  velocity = 12;
+  velocity = 10;
 
   constructor(
     private SceneState: SceneState,
@@ -50,10 +51,9 @@ export class PlayerMovementState {
         tap((targetPos) => {
           if (targetPos) {
             this.targetPos = targetPos;
+            this.playerIsMoving = true;
           }
         })
-        // throttleTime(50),
-        // tap((targetPos) => this.movePlayerTo(this, targetPos))
       )
       .subscribe();
 
@@ -79,28 +79,28 @@ export class PlayerMovementState {
   }
 
   tick(delta: number) {
-    if (this.player && this.targetPos) {
-      const currentPos = new Vector3();
-      const actualMoveSpeed = delta * this.velocity; // velocity = 12
+    if (this.player && this.targetPos && this.playerIsMoving) {
+      const actualMoveSpeed = delta * this.velocity; // velocity = 10 units
 
-      currentPos.copy(this.player.position);
+      this.player.lookAt(
+        this.targetPos.x,
+        this.player.position.y,
+        this.targetPos.z
+      );
 
-      const dirVector = new Vector3();
+      this.dirVector.subVectors(this.targetPos, this.player.position);
 
-      this.player.lookAt(this.targetPos.x, currentPos.y, this.targetPos.z);
+      const distance = this.player.position.distanceTo(this.targetPos);
 
-      dirVector.subVectors(this.targetPos, currentPos).normalize();
+      this.dirVector.y = 0;
+      this.dirVector.normalize();
 
-      const distance = currentPos.distanceTo(this.targetPos);
-
-      if (distance > dirVector.length()) {
+      if (distance - 0.1 > this.dirVector.length()) {
         this.playerIsMoving = true;
 
-        dirVector.y = 0;
-        dirVector.normalize();
-        dirVector.multiplyScalar(actualMoveSpeed);
+        this.dirVector.multiplyScalar(actualMoveSpeed);
 
-        this.player.position.add(dirVector);
+        this.player.position.add(this.dirVector);
       } else {
         this.playerIsMoving = false;
       }
