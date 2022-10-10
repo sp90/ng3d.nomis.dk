@@ -1,6 +1,7 @@
 import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
 import { CamerasState } from '@states/cameras/cameras.state';
 import { CanvasState } from '@states/canvas/canvas.state';
+import { PlayerMovementState } from '@states/player/player-movement.state';
 import { PlayerState } from '@states/player/player.state';
 import { SceneState } from '@states/scene/scene.state';
 import { update } from '@tweenjs/tween.js';
@@ -21,6 +22,7 @@ export class CanvasComponent implements AfterViewInit {
     private CanvasState: CanvasState,
     private CameraState: CamerasState,
     private PlayerState: PlayerState,
+    private PlayerMovementState: PlayerMovementState,
     private SceneState: SceneState
   ) {}
 
@@ -45,6 +47,7 @@ export class CanvasComponent implements AfterViewInit {
           const deltaTime = clock.getDelta();
           _self.SceneState.digestObjects();
           _self.world.fixedStep();
+          _self.PlayerMovementState.tick(deltaTime);
 
           if (_self.PlayerState.player?.position) {
             _self.CameraState.setPosRelativeToPlayer(

@@ -22,7 +22,8 @@ export class PlayerMovementState {
   playerBottom = 0;
   camera = this.CameraState.mainCamera;
 
-  targetPosition: Vector3 | null = null;
+  playerIsMoving = false;
+  targetPos: Vector3 | null = null;
   playerMoveTween?: Tween<Vector3> | null;
   velocity = 12;
 
@@ -45,9 +46,14 @@ export class PlayerMovementState {
     this.moveSub
       .pipe(
         throttleTime(20),
-        map(this.mapMouseEvent),
-        throttleTime(50),
-        tap(this.movePlayerTo)
+        map((event) => this.mapMouseEvent(this, event)),
+        tap((targetPos) => {
+          if (targetPos) {
+            this.targetPos = targetPos;
+          }
+        })
+        // throttleTime(50),
+        // tap((targetPos) => this.movePlayerTo(this, targetPos))
       )
       .subscribe();
 
@@ -72,78 +78,62 @@ export class PlayerMovementState {
     });
   }
 
-  mapMouseEvent(event: MouseEvent | null) {
-    if (event) {
-      // Kill animation
-      if (this.player && this.camera) {
-        this.lastClickedPointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-        this.lastClickedPointer.y =
-          -(event.clientY / window.innerHeight) * 2 + 1;
+  tick(delta: number) {
+    if (this.player && this.targetPos) {
+      const currentPos = new Vector3();
+      const actualMoveSpeed = delta * this.velocity; // velocity = 12
 
-        // update the picking ray with the camera and pointer position
-        this.raycaster.setFromCamera(this.lastClickedPointer, this.camera);
+      currentPos.copy(this.player.position);
 
-        // calculate objects intersecting the picking ray
-        const intersects = this.raycaster.intersectObjects(
-          this.SceneState.mainScene.children
-        );
+      const dirVector = new Vector3();
 
-        let i = intersects.length;
+      this.player.lookAt(this.targetPos.x, currentPos.y, this.targetPos.z);
 
-        while (i--) {
-          if (intersects[i].object.userData['isFloor'] === true) {
-            const targetPos = new Vector3().copy(intersects[i].point);
+      dirVector.subVectors(this.targetPos, currentPos).normalize();
 
-            this.player.lookAt(
-              targetPos.x,
-              this.player.position.y,
-              targetPos.z
-            );
+      const distance = currentPos.distanceTo(this.targetPos);
 
-            return targetPos;
-          }
+      if (distance > dirVector.length()) {
+        this.playerIsMoving = true;
 
-          if (i <= 0) {
-            break;
-          }
-        }
+        dirVector.y = 0;
+        dirVector.normalize();
+        dirVector.multiplyScalar(actualMoveSpeed);
+
+        this.player.position.add(dirVector);
+      } else {
+        this.playerIsMoving = false;
       }
     }
-
-    return null;
   }
 
-  movePlayerTo(targetPos: Vector3 | null) {
-    if (!this.player || !targetPos) {
-      return;
-    }
+  mapMouseEvent(_self: PlayerMovementState, event: MouseEvent | null) {
+    if (event && _self.player && _self.camera) {
+      _self.lastClickedPointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+      _self.lastClickedPointer.y =
+        -(event.clientY / window.innerHeight) * 2 + 1;
 
-    const currentPos = new Vector3().copy(this.player.position);
-    const distance = currentPos.distanceTo(targetPos);
-    const duration = distance / this.velocity;
+      // update the picking ray with the camera and pointer position
+      _self.raycaster.setFromCamera(_self.lastClickedPointer, _self.camera);
 
-    targetPos.y = this.player.position.y;
+      // calculate objects intersecting the picking ray
+      const intersects = _self.raycaster.intersectObjects(
+        _self.SceneState.mainScene.children
+      );
 
-    this.playerMoveTween && this.playerMoveTween.stop();
-    this.playerMoveTween = new Tween(this.player.position)
-      .to(targetPos, duration * 1000) // Seconds to MS
-      .start();
-  }
+      let i = intersects.length;
 
-  playerBoxIsColiding(): null | object {
-    let i = this.SceneState.sceneObjectsCheckCollision.length;
-    let isIntersectingWith = null;
-
-    if (this.player && this.playerBox) {
       while (i--) {
-        const obj = this.SceneState.sceneObjectsCheckCollision[i];
+        if (intersects[i].object.userData['isFloor'] === true) {
+          const targetPos = new Vector3().copy(intersects[i].point);
 
-        if (this.playerBox.intersectsBox(obj.box)) {
-          isIntersectingWith = obj;
-        }
+          // _self.player.lookAt(
+          //   targetPos.x,
+          //   _self.player.position.y,
+          //   targetPos.z
+          // );
 
-        if (isIntersectingWith) {
-          break;
+          return targetPos;
         }
 
         if (i <= 0) {
@@ -152,6 +142,48 @@ export class PlayerMovementState {
       }
     }
 
-    return isIntersectingWith;
+    return null;
   }
+
+  movePlayerTo(_self: PlayerMovementState, targetPos: Vector3 | null) {
+    if (!_self.player || !targetPos) {
+      return;
+    }
+
+    const currentPos = new Vector3().copy(_self.player.position);
+    const distance = currentPos.distanceTo(targetPos);
+    const duration = distance / _self.velocity;
+
+    targetPos.y = _self.player.position.y;
+
+    _self.playerMoveTween && _self.playerMoveTween.stop();
+    _self.playerMoveTween = new Tween(_self.player.position)
+      .to(targetPos, duration * 1000) // Seconds to MS
+      .start();
+  }
+
+  // playerBoxIsColiding(): null | object {
+  //   let i = this.SceneState.sceneObjectsCheckCollision.length;
+  //   let isIntersectingWith = null;
+
+  //   if (this.player && this.playerBox) {
+  //     while (i--) {
+  //       const obj = this.SceneState.sceneObjectsCheckCollision[i];
+
+  //       if (this.playerBox.intersectsBox(obj.box)) {
+  //         isIntersectingWith = obj;
+  //       }
+
+  //       if (isIntersectingWith) {
+  //         break;
+  //       }
+
+  //       if (i <= 0) {
+  //         break;
+  //       }
+  //     }
+  //   }
+
+  //   return isIntersectingWith;
+  // }
 }
