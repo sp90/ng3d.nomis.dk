@@ -5,6 +5,7 @@ import { Body } from 'cannon-es';
 import {
   Box3,
   BoxGeometry,
+  Clock,
   Color,
   Mesh,
   MeshStandardMaterial,
@@ -33,7 +34,7 @@ export class PlayerState {
     private PlayerMovementState: PlayerMovementState
   ) {}
 
-  readyPlayer() {
+  readyPlayer(clock: Clock) {
     const material = new MeshStandardMaterial({ color: new Color('teal') });
     const playerHeight = 2;
 
@@ -58,6 +59,7 @@ export class PlayerState {
     this.SceneState.addPlayerToScene(this.player, this.playerBox);
     this.SceneState.addToScene(this.camera);
     this.PlayerMovementState.initPlayerMovement(
+      clock,
       this.player,
       this.playerBox,
       this.playerBottom

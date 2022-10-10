@@ -1,11 +1,10 @@
 import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
 import { CamerasState } from '@states/cameras/cameras.state';
 import { CanvasState } from '@states/canvas/canvas.state';
-import { PlayerMovementState } from '@states/player/player-movement.state';
 import { PlayerState } from '@states/player/player.state';
 import { SceneState } from '@states/scene/scene.state';
 import { update } from '@tweenjs/tween.js';
-import { WebGLRenderer } from 'three';
+import { Clock, WebGLRenderer } from 'three';
 import Stats from 'three/examples/jsm/libs/stats.module';
 
 @Component({
@@ -22,17 +21,17 @@ export class CanvasComponent implements AfterViewInit {
     private CanvasState: CanvasState,
     private CameraState: CamerasState,
     private PlayerState: PlayerState,
-    private PlayerMovementState: PlayerMovementState,
     private SceneState: SceneState
   ) {}
 
   ngAfterViewInit(): void {
     const _self = this;
     const canvas = this.canvas?.nativeElement as HTMLCanvasElement;
+    const clock = new Clock();
 
     if (canvas) {
       this.CanvasState.initSceneRenderer(canvas, (renderer: WebGLRenderer) => {
-        this.PlayerState.readyPlayer();
+        this.PlayerState.readyPlayer(clock);
 
         const stats = Stats();
         document.body.appendChild(stats.dom);
@@ -43,6 +42,7 @@ export class CanvasComponent implements AfterViewInit {
           // Animation tween
           update();
 
+          const deltaTime = clock.getDelta();
           _self.SceneState.digestObjects();
           _self.world.fixedStep();
 

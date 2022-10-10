@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 import { CamerasState } from '@states/cameras/cameras.state';
 import { SceneState } from '@states/scene/scene.state';
-import TWEEN, { removeAll, Tween } from '@tweenjs/tween.js';
-import { Box3, Mesh, Raycaster, Vector2, Vector3 } from 'three';
+import TWEEN, { Tween } from '@tweenjs/tween.js';
+import { Box3, Clock, Mesh, Raycaster, Vector2, Vector3 } from 'three';
 
 @Injectable({
   providedIn: 'root',
@@ -13,20 +13,28 @@ export class PlayerMovementState {
   raycaster = new Raycaster();
   tweenGroup = new TWEEN.Group();
 
+  clock?: Clock;
   player?: Mesh;
   playerBox?: Box3;
-  playerEasing = TWEEN.Easing.Linear.None;
   playerBottom = 0;
   camera = this.CameraState.mainCamera;
 
+  targetPosition: Vector3 | null = null;
   playerMoveTween?: Tween<Vector3> | null;
+  velocity = 12;
 
   constructor(
     private SceneState: SceneState,
     private CameraState: CamerasState
   ) {}
 
-  initPlayerMovement(player: Mesh, playerBox: Box3, playerBottom: number) {
+  initPlayerMovement(
+    clock: Clock,
+    player: Mesh,
+    playerBox: Box3,
+    playerBottom: number
+  ) {
+    this.clock = clock;
     this.player = player;
     this.playerBox = playerBox;
     this.playerBottom = playerBottom;
@@ -34,11 +42,7 @@ export class PlayerMovementState {
     const _self = this;
 
     document.addEventListener('click', (event: MouseEvent) => {
-      _self.movePlayerTo(event);
-    });
-
-    document.addEventListener('dblclick', (event: MouseEvent) => {
-      _self.movePlayerTo(event);
+      _self.movePlayerTo(event, true);
     });
 
     document.addEventListener('pointerdown', (event: MouseEvent) => {
@@ -53,12 +57,15 @@ export class PlayerMovementState {
 
     document.addEventListener('pointerup', (event: MouseEvent) => {
       _self.mouseIsDown = false;
+      // removeAll();
     });
   }
 
-  movePlayerTo(event: MouseEvent) {
+  movePlayerTo(event: MouseEvent, asClick = false) {
+    // Kill animation
     if (this.player && this.camera) {
-      const _self = this;
+      // const delta = this.clock.getDelta();
+      // const actualMoveSpeed = delta * this.velocity;
       this.lastClickedPointer.x = (event.clientX / window.innerWidth) * 2 - 1;
       this.lastClickedPointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
@@ -74,38 +81,61 @@ export class PlayerMovementState {
 
       while (i--) {
         if (intersects[i].object.userData['isFloor'] === true) {
-          const vector = new Vector3().copy(intersects[i].point);
-          const vectorRoundY =
-            Math.round(vector.y * 10) / 10 + this.playerBottom;
+          const targetPos = new Vector3().copy(intersects[i].point);
 
-          const distance = this.player.position.distanceTo(vector as any);
-          const duration = (400 / 2.2) * distance;
-
-          removeAll();
-
-          this.player?.lookAt(vector.x, this.player.position.y, vector.z);
-
-          const intersectsWith = _self.playerBoxIsColiding();
-
-          if (!intersectsWith) {
-            console.log(intersectsWith);
-
-            new Tween(this.player.position)
-              .to(
-                {
-                  x: vector.x,
-                  y: vectorRoundY,
-                  z: vector.z,
-                },
-                duration
-              )
-              .onUpdate((_) => {
-                if (_self.playerBoxIsColiding()) {
-                  removeAll();
-                }
-              })
-              .start();
+          if (
+            this.targetPosition &&
+            this.targetPosition.z === targetPos.z &&
+            this.targetPosition.x === targetPos.x
+          ) {
+            return;
           }
+
+          this.targetPosition = targetPos;
+          // const playerPos = this.player.position;
+          // const dirVector = new Vector3();
+
+          this.player.lookAt(targetPos.x, this.player.position.y, targetPos.z);
+
+          const distance = this.player.position.distanceTo(targetPos as any);
+          const duration = (distance / this.velocity) * 1000; // in milliseconds
+
+          this.playerMoveTween && this.playerMoveTween.stop();
+          this.playerMoveTween = new Tween(this.player.position)
+            .to(
+              {
+                x: targetPos.x,
+                y: this.player.position.y,
+                z: targetPos.z,
+              },
+              duration
+            )
+            .onComplete(() => {
+              this.targetPosition = null;
+            })
+            .start();
+
+          // if (asClick) {
+          // const intersectsWith = _self.playerBoxIsColiding();
+
+          // if (!intersectsWith) {
+          // }
+
+          //   return;
+          // }
+
+          /**
+           * Calc next pos, could be used for first person shooter
+           */
+          // dirVector.subVectors(targetPos, playerPos).normalize();
+
+          // dirVector.y = Math.round(dirVector.y * 10) / 10 + this.playerBottom;
+
+          // dirVector.y = 0;
+          // dirVector.normalize();
+          // dirVector.multiplyScalar(actualMoveSpeed);
+
+          // this.player.position.add(dirVector);
         }
 
         if (i <= 0) {
