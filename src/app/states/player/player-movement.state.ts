@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { CamerasState } from '@states/cameras/cameras.state';
 import { SceneState } from '@states/scene/scene.state';
 import TWEEN, { Tween } from '@tweenjs/tween.js';
-import { BehaviorSubject, tap, throttleTime } from 'rxjs';
+import { BehaviorSubject, map, tap, throttleTime } from 'rxjs';
 import { Box3, Clock, Mesh, Raycaster, Vector2, Vector3 } from 'three';
 
 @Injectable({
@@ -24,7 +24,7 @@ export class PlayerMovementState {
 
   targetPosition: Vector3 | null = null;
   playerMoveTween?: Tween<Vector3> | null;
-  velocity = 12 / 200;
+  velocity = 12;
 
   constructor(
     private SceneState: SceneState,
@@ -44,7 +44,51 @@ export class PlayerMovementState {
 
     this.moveSub
       .pipe(
-        throttleTime(20),
+        map((event) => {
+          if (event) {
+            // Kill animation
+            if (this.player && this.camera) {
+              this.lastClickedPointer.x =
+                (event.clientX / window.innerWidth) * 2 - 1;
+              this.lastClickedPointer.y =
+                -(event.clientY / window.innerHeight) * 2 + 1;
+
+              // update the picking ray with the camera and pointer position
+              this.raycaster.setFromCamera(
+                this.lastClickedPointer,
+                this.camera
+              );
+
+              // calculate objects intersecting the picking ray
+              const intersects = this.raycaster.intersectObjects(
+                this.SceneState.mainScene.children
+              );
+
+              let i = intersects.length;
+
+              while (i--) {
+                if (intersects[i].object.userData['isFloor'] === true) {
+                  const targetPos = new Vector3().copy(intersects[i].point);
+
+                  this.player.lookAt(
+                    targetPos.x,
+                    this.player.position.y,
+                    targetPos.z
+                  );
+
+                  return targetPos;
+                }
+
+                if (i <= 0) {
+                  break;
+                }
+              }
+            }
+          }
+
+          return null;
+        }),
+        throttleTime(50),
         tap((event) => event && this.movePlayerTo(event))
       )
       .subscribe();
@@ -70,46 +114,21 @@ export class PlayerMovementState {
     });
   }
 
-  movePlayerTo(event: MouseEvent) {
-    // Kill animation
-    if (this.player && this.camera && this.clock) {
-      const delta = this.clock.getDelta();
-      this.lastClickedPointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-      this.lastClickedPointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-      // update the picking ray with the camera and pointer position
-      this.raycaster.setFromCamera(this.lastClickedPointer, this.camera);
-
-      // calculate objects intersecting the picking ray
-      const intersects = this.raycaster.intersectObjects(
-        this.SceneState.mainScene.children
-      );
-
-      let i = intersects.length;
-
-      while (i--) {
-        if (intersects[i].object.userData['isFloor'] === true) {
-          const targetPos = new Vector3().copy(intersects[i].point);
-
-          this.player.lookAt(targetPos.x, this.player.position.y, targetPos.z);
-
-          const distance = this.player.position.distanceTo(targetPos as any);
-          const ms = 1000;
-          const duration = (distance / this.velocity) * delta * ms; // in milliseconds
-
-          targetPos.y = this.player.position.y;
-
-          this.playerMoveTween && this.playerMoveTween.stop();
-          this.playerMoveTween = new Tween(this.player.position)
-            .to(targetPos, duration)
-            .start();
-        }
-
-        if (i <= 0) {
-          break;
-        }
-      }
+  movePlayerTo(targetPos: Vector3) {
+    if (!this.player) {
+      return;
     }
+
+    const currentPos = new Vector3().copy(this.player.position);
+    const distance = currentPos.distanceTo(targetPos);
+    const duration = distance / this.velocity;
+
+    targetPos.y = this.player.position.y;
+
+    this.playerMoveTween && this.playerMoveTween.stop();
+    this.playerMoveTween = new Tween(this.player.position)
+      .to(targetPos, duration * 1000) // Seconds to MS
+      .start();
   }
 
   playerBoxIsColiding(): null | object {
