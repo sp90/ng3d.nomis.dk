@@ -42,7 +42,7 @@ export class PlayerMovementState {
     const _self = this;
 
     document.addEventListener('click', (event: MouseEvent) => {
-      _self.movePlayerTo(event, true);
+      _self.movePlayerTo(event);
     });
 
     document.addEventListener('pointerdown', (event: MouseEvent) => {
@@ -57,15 +57,12 @@ export class PlayerMovementState {
 
     document.addEventListener('pointerup', (event: MouseEvent) => {
       _self.mouseIsDown = false;
-      // removeAll();
     });
   }
 
-  movePlayerTo(event: MouseEvent, asClick = false) {
+  movePlayerTo(event: MouseEvent) {
     // Kill animation
     if (this.player && this.camera) {
-      // const delta = this.clock.getDelta();
-      // const actualMoveSpeed = delta * this.velocity;
       this.lastClickedPointer.x = (event.clientX / window.innerWidth) * 2 - 1;
       this.lastClickedPointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
@@ -83,59 +80,17 @@ export class PlayerMovementState {
         if (intersects[i].object.userData['isFloor'] === true) {
           const targetPos = new Vector3().copy(intersects[i].point);
 
-          if (
-            this.targetPosition &&
-            this.targetPosition.z === targetPos.z &&
-            this.targetPosition.x === targetPos.x
-          ) {
-            return;
-          }
-
-          this.targetPosition = targetPos;
-          // const playerPos = this.player.position;
-          // const dirVector = new Vector3();
-
           this.player.lookAt(targetPos.x, this.player.position.y, targetPos.z);
 
           const distance = this.player.position.distanceTo(targetPos as any);
           const duration = (distance / this.velocity) * 1000; // in milliseconds
 
+          targetPos.y = this.player.position.y;
+
           this.playerMoveTween && this.playerMoveTween.stop();
           this.playerMoveTween = new Tween(this.player.position)
-            .to(
-              {
-                x: targetPos.x,
-                y: this.player.position.y,
-                z: targetPos.z,
-              },
-              duration
-            )
-            .onComplete(() => {
-              this.targetPosition = null;
-            })
+            .to(targetPos, duration)
             .start();
-
-          // if (asClick) {
-          // const intersectsWith = _self.playerBoxIsColiding();
-
-          // if (!intersectsWith) {
-          // }
-
-          //   return;
-          // }
-
-          /**
-           * Calc next pos, could be used for first person shooter
-           */
-          // dirVector.subVectors(targetPos, playerPos).normalize();
-
-          // dirVector.y = Math.round(dirVector.y * 10) / 10 + this.playerBottom;
-
-          // dirVector.y = 0;
-          // dirVector.normalize();
-          // dirVector.multiplyScalar(actualMoveSpeed);
-
-          // this.player.position.add(dirVector);
         }
 
         if (i <= 0) {
