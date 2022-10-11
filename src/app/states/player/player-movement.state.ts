@@ -81,6 +81,7 @@ export class PlayerMovementState {
   tick(delta: number) {
     if (this.player && this.targetPos && this.playerIsMoving) {
       const actualMoveSpeed = delta * this.velocity; // velocity = 10 units
+      const distanceToTarget = this.player.position.distanceTo(this.targetPos);
 
       this.player.lookAt(
         this.targetPos.x,
@@ -88,18 +89,16 @@ export class PlayerMovementState {
         this.targetPos.z
       );
 
-      this.dirVector.subVectors(this.targetPos, this.player.position);
+      this.dirVector
+        .subVectors(this.targetPos, this.player.position)
+        .normalize()
+        .multiplyScalar(actualMoveSpeed);
 
-      const distance = this.player.position.distanceTo(this.targetPos);
-
+      // Reset player height
       this.dirVector.y = 0;
-      this.dirVector.normalize();
 
-      if (distance - 0.1 > this.dirVector.length()) {
+      if (distanceToTarget > this.dirVector.length()) {
         this.playerIsMoving = true;
-
-        this.dirVector.multiplyScalar(actualMoveSpeed);
-
         this.player.position.add(this.dirVector);
       } else {
         this.playerIsMoving = false;
