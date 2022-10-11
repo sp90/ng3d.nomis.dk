@@ -1,9 +1,11 @@
 import { Injectable } from '@angular/core';
 import { CamerasState } from '@states/cameras/cameras.state';
 import { SceneState } from '@states/scene/scene.state';
-import TWEEN, { Tween } from '@tweenjs/tween.js';
 import { BehaviorSubject, map, tap, throttleTime } from 'rxjs';
-import { Box3, Clock, Mesh, Raycaster, Vector2, Vector3 } from 'three';
+import { ArrowHelper, Clock, Group, Raycaster, Vector2, Vector3 } from 'three';
+
+const PLAYER_COLLISION_RAY_NEAR = 0;
+const PLAYER_COLLISION_RAY_FAR = 100;
 
 @Injectable({
   providedIn: 'root',
@@ -11,38 +13,30 @@ import { Box3, Clock, Mesh, Raycaster, Vector2, Vector3 } from 'three';
 export class PlayerMovementState {
   private moveSub = new BehaviorSubject<MouseEvent | null>(null);
 
-  mouseIsDown = false;
+  mainCamera = this.CameraState.mainCamera;
   lastClickedPointer = new Vector2(0, 0);
+  rayHelper = new ArrowHelper();
   raycaster = new Raycaster();
-  tweenGroup = new TWEEN.Group();
-
-  clock?: Clock;
-  player?: Mesh;
-  playerBox?: Box3;
-  playerBottom = 0;
-  camera = this.CameraState.mainCamera;
-
-  playerIsMoving = false;
-  targetPos: Vector3 | null = null;
+  targetPos = new Vector3();
   dirVector = new Vector3();
-  playerMoveTween?: Tween<Vector3> | null;
+  mouseIsDown = false;
+  playerIsMoving = false;
   velocity = 10;
+
+  playerRay = new Raycaster();
+  clock?: Clock;
+  player?: Group;
 
   constructor(
     private SceneState: SceneState,
     private CameraState: CamerasState
   ) {}
 
-  initPlayerMovement(
-    clock: Clock,
-    player: Mesh,
-    playerBox: Box3,
-    playerBottom: number
-  ) {
+  initPlayerMovement(clock: Clock, player: Group) {
     this.clock = clock;
     this.player = player;
-    this.playerBox = playerBox;
-    this.playerBottom = playerBottom;
+    this.playerRay.far = PLAYER_COLLISION_RAY_FAR;
+    this.playerRay.near = PLAYER_COLLISION_RAY_NEAR;
 
     this.moveSub
       .pipe(
@@ -50,7 +44,7 @@ export class PlayerMovementState {
         map((event) => this.mapMouseEvent(this, event)),
         tap((targetPos) => {
           if (targetPos) {
-            this.targetPos = targetPos;
+            this.targetPos.copy(targetPos);
             this.playerIsMoving = true;
           }
         })
@@ -79,25 +73,29 @@ export class PlayerMovementState {
   }
 
   tick(delta: number) {
-    if (this.player && this.targetPos && this.playerIsMoving) {
+    if (
+      this.player &&
+      this.playerRay &&
+      this.targetPos &&
+      this.playerIsMoving
+    ) {
       const actualMoveSpeed = delta * this.velocity; // velocity = 10 units
-      const distanceToTarget = this.player.position.distanceTo(this.targetPos);
+      const playerPos = this.player.position.clone();
+      const distanceToTarget = playerPos.distanceTo(this.targetPos);
 
-      this.player.lookAt(
-        this.targetPos.x,
-        this.player.position.y,
-        this.targetPos.z
-      );
+      this.player.lookAt(this.targetPos.x, playerPos.y, this.targetPos.z);
 
       this.dirVector
-        .subVectors(this.targetPos, this.player.position)
+        .subVectors(this.targetPos, playerPos)
         .normalize()
         .multiplyScalar(actualMoveSpeed);
 
-      // Reset player height
-      this.dirVector.y = 0;
+      this.updateRay(this.player.position.clone(), this.dirVector.clone());
 
-      if (distanceToTarget > this.dirVector.length()) {
+      if (
+        distanceToTarget > this.dirVector.length() &&
+        !this.isPlayerColliding()
+      ) {
         this.playerIsMoving = true;
         this.player.position.add(this.dirVector);
       } else {
@@ -107,13 +105,13 @@ export class PlayerMovementState {
   }
 
   mapMouseEvent(_self: PlayerMovementState, event: MouseEvent | null) {
-    if (event && _self.player && _self.camera) {
+    if (event && _self.player && _self.mainCamera) {
       _self.lastClickedPointer.x = (event.clientX / window.innerWidth) * 2 - 1;
       _self.lastClickedPointer.y =
         -(event.clientY / window.innerHeight) * 2 + 1;
 
       // update the picking ray with the camera and pointer position
-      _self.raycaster.setFromCamera(_self.lastClickedPointer, _self.camera);
+      _self.raycaster.setFromCamera(_self.lastClickedPointer, _self.mainCamera);
 
       // calculate objects intersecting the picking ray
       const intersects = _self.raycaster.intersectObjects(
@@ -125,12 +123,6 @@ export class PlayerMovementState {
       while (i--) {
         if (intersects[i].object.userData['isFloor'] === true) {
           const targetPos = new Vector3().copy(intersects[i].point);
-
-          // _self.player.lookAt(
-          //   targetPos.x,
-          //   _self.player.position.y,
-          //   targetPos.z
-          // );
 
           return targetPos;
         }
@@ -144,45 +136,32 @@ export class PlayerMovementState {
     return null;
   }
 
-  movePlayerTo(_self: PlayerMovementState, targetPos: Vector3 | null) {
-    if (!_self.player || !targetPos) {
-      return;
-    }
+  private updateRay(origin: Vector3, direction: Vector3) {
+    direction.subVectors(this.targetPos, origin).normalize();
 
-    const currentPos = new Vector3().copy(_self.player.position);
-    const distance = currentPos.distanceTo(targetPos);
-    const duration = distance / _self.velocity;
-
-    targetPos.y = _self.player.position.y;
-
-    _self.playerMoveTween && _self.playerMoveTween.stop();
-    _self.playerMoveTween = new Tween(_self.player.position)
-      .to(targetPos, duration * 1000) // Seconds to MS
-      .start();
+    this.raycaster.set(origin, direction);
   }
 
-  // playerBoxIsColiding(): null | object {
-  //   let i = this.SceneState.sceneObjectsCheckCollision.length;
-  //   let isIntersectingWith = null;
+  private isPlayerColliding(): boolean {
+    const intersects = this.raycaster.intersectObjects(
+      this.SceneState.mainScene.children
+    );
 
-  //   if (this.player && this.playerBox) {
-  //     while (i--) {
-  //       const obj = this.SceneState.sceneObjectsCheckCollision[i];
+    let i = intersects.length;
 
-  //       if (this.playerBox.intersectsBox(obj.box)) {
-  //         isIntersectingWith = obj;
-  //       }
+    while (i--) {
+      if (
+        intersects[i].object.userData['noIntersect'] !== true &&
+        intersects[i].object.userData['isFloor'] !== true
+      ) {
+        return intersects[i].distance < 0.5;
+      }
 
-  //       if (isIntersectingWith) {
-  //         break;
-  //       }
+      if (i <= 0) {
+        break;
+      }
+    }
 
-  //       if (i <= 0) {
-  //         break;
-  //       }
-  //     }
-  //   }
-
-  //   return isIntersectingWith;
-  // }
+    return false;
+  }
 }

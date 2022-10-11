@@ -59,6 +59,7 @@ export class CanvasComponent implements AfterViewInit {
           renderer.render(
             _self.SceneState.mainScene,
             _self.CameraState.mainCamera
+            // _self.PlayerState.player?.children[2] as PerspectiveCamera
           );
 
           window.requestAnimationFrame(tick);

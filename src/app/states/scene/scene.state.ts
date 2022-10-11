@@ -6,6 +6,7 @@ import {
   BoxGeometry,
   Color,
   DirectionalLight,
+  Group,
   HemisphereLight,
   Mesh,
   MeshStandardMaterial,
@@ -45,7 +46,7 @@ export class SceneState {
 
     this.addCollisionTestBox();
     this.addBasePlane();
-    this.addToScene(this.mainCamera);
+    // this.addToScene(this.mainCamera);
     this.addSunLight();
   }
 
@@ -57,7 +58,7 @@ export class SceneState {
     }
   }
 
-  addPlayerToScene(object: Mesh, playerBox?: Box3) {
+  addPlayerToScene(object: Group, playerBox?: Box3) {
     this.mainScene.add(object);
 
     if (playerBox) {

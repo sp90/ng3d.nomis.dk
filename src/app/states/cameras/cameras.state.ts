@@ -48,6 +48,7 @@ export class CamerasState {
       DEFAULT_CAMERA_OPTIONS.near,
       DEFAULT_CAMERA_OPTIONS.far
     );
+
     return camera;
   }
 }
