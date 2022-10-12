@@ -4,7 +4,7 @@ import { CanvasState } from '@states/canvas/canvas.state';
 import { PlayerMovementState } from '@states/player/player-movement.state';
 import { PlayerState } from '@states/player/player.state';
 import { SceneState } from '@states/scene/scene.state';
-import { update } from '@tweenjs/tween.js';
+import { WorldState } from '@states/world/world.state';
 import { Clock, WebGLRenderer } from 'three';
 import Stats from 'three/examples/jsm/libs/stats.module';
 
@@ -16,13 +16,12 @@ import Stats from 'three/examples/jsm/libs/stats.module';
 export class CanvasComponent implements AfterViewInit {
   @ViewChild('canvas') canvas?: ElementRef<HTMLCanvasElement>;
 
-  world = this.SceneState.mainWorld;
-
   constructor(
     private CanvasState: CanvasState,
     private CameraState: CamerasState,
     private PlayerState: PlayerState,
     private PlayerMovementState: PlayerMovementState,
+    private WorldState: WorldState,
     private SceneState: SceneState
   ) {}
 
@@ -41,13 +40,10 @@ export class CanvasComponent implements AfterViewInit {
         tick();
 
         function tick() {
-          // Animation tween
-          update();
-
           const deltaTime = clock.getDelta();
-          _self.SceneState.digestObjects();
-          _self.world.fixedStep();
+
           _self.PlayerMovementState.tick(deltaTime);
+          _self.WorldState.tick();
 
           if (_self.PlayerState.player?.position) {
             _self.CameraState.setPosRelativeToPlayer(
@@ -59,7 +55,6 @@ export class CanvasComponent implements AfterViewInit {
           renderer.render(
             _self.SceneState.mainScene,
             _self.CameraState.mainCamera
-            // _self.PlayerState.player?.children[2] as PerspectiveCamera
           );
 
           window.requestAnimationFrame(tick);

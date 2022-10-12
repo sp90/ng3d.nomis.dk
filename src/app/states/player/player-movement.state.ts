@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { CamerasState } from '@states/cameras/cameras.state';
 import { SceneState } from '@states/scene/scene.state';
+import { Body } from 'cannon-es';
 import { BehaviorSubject, map, tap, throttleTime } from 'rxjs';
 import { ArrowHelper, Clock, Group, Raycaster, Vector2, Vector3 } from 'three';
 
@@ -26,15 +27,17 @@ export class PlayerMovementState {
   playerRay = new Raycaster();
   clock?: Clock;
   player?: Group;
+  playerBody?: Body;
 
   constructor(
     private SceneState: SceneState,
     private CameraState: CamerasState
   ) {}
 
-  initPlayerMovement(clock: Clock, player: Group) {
+  initPlayerMovement(clock: Clock, player: Group, playerBody: Body) {
     this.clock = clock;
     this.player = player;
+    this.playerBody = playerBody;
     this.playerRay.far = PLAYER_COLLISION_RAY_FAR;
     this.playerRay.near = PLAYER_COLLISION_RAY_NEAR;
 
@@ -77,6 +80,7 @@ export class PlayerMovementState {
       this.player &&
       this.playerRay &&
       this.targetPos &&
+      this.playerBody &&
       this.playerIsMoving
     ) {
       const actualMoveSpeed = delta * this.velocity; // velocity = 10 units
@@ -90,12 +94,13 @@ export class PlayerMovementState {
         .normalize()
         .multiplyScalar(actualMoveSpeed);
 
-      this.updateRay(this.player.position.clone(), this.dirVector.clone());
+      // this.updateRay(this.player.position.clone(), this.dirVector.clone());
+      // && !this.isPlayerColliding()
 
-      if (
-        distanceToTarget > this.dirVector.length() &&
-        !this.isPlayerColliding()
-      ) {
+      this.playerBody.position.copy(this.player.position as any);
+      this.playerBody.quaternion.copy(this.player.quaternion as any);
+
+      if (distanceToTarget > this.dirVector.length()) {
         this.playerIsMoving = true;
         this.player.position.add(this.dirVector);
       } else {
@@ -136,32 +141,32 @@ export class PlayerMovementState {
     return null;
   }
 
-  private updateRay(origin: Vector3, direction: Vector3) {
-    direction.subVectors(this.targetPos, origin).normalize();
+  // private updateRay(origin: Vector3, direction: Vector3) {
+  //   direction.subVectors(this.targetPos, origin).normalize();
 
-    this.raycaster.set(origin, direction);
-  }
+  //   this.raycaster.set(origin, direction);
+  // }
 
-  private isPlayerColliding(): boolean {
-    const intersects = this.raycaster.intersectObjects(
-      this.SceneState.mainScene.children
-    );
+  // private isPlayerColliding(): boolean {
+  //   const intersects = this.raycaster.intersectObjects(
+  //     this.SceneState.mainScene.children
+  //   );
 
-    let i = intersects.length;
+  //   let i = intersects.length;
 
-    while (i--) {
-      if (
-        intersects[i].object.userData['noIntersect'] !== true &&
-        intersects[i].object.userData['isFloor'] !== true
-      ) {
-        return intersects[i].distance < 0.5;
-      }
+  //   while (i--) {
+  //     if (
+  //       intersects[i].object.userData['noIntersect'] !== true &&
+  //       intersects[i].object.userData['isFloor'] !== true
+  //     ) {
+  //       return intersects[i].distance < 0.5;
+  //     }
 
-      if (i <= 0) {
-        break;
-      }
-    }
+  //     if (i <= 0) {
+  //       break;
+  //     }
+  //   }
 
-    return false;
-  }
+  //   return false;
+  // }
 }
