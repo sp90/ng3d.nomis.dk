@@ -1,9 +1,18 @@
 import { Injectable } from '@angular/core';
 import { CamerasState } from '@states/cameras/cameras.state';
 import { SceneState } from '@states/scene/scene.state';
+import { WorldState } from '@states/world/world.state';
 import { Body } from 'cannon-es';
 import { BehaviorSubject, map, tap, throttleTime } from 'rxjs';
-import { ArrowHelper, Clock, Group, Raycaster, Vector2, Vector3 } from 'three';
+import {
+  ArrowHelper,
+  Box3,
+  Clock,
+  Group,
+  Raycaster,
+  Vector2,
+  Vector3,
+} from 'three';
 
 const PLAYER_COLLISION_RAY_NEAR = 0;
 const PLAYER_COLLISION_RAY_FAR = 100;
@@ -15,11 +24,13 @@ export class PlayerMovementState {
   private moveSub = new BehaviorSubject<MouseEvent | null>(null);
 
   mainCamera = this.CameraState.mainCamera;
+  staticObjects = this.WorldState.staticObjects;
   lastClickedPointer = new Vector2(0, 0);
   rayHelper = new ArrowHelper();
   raycaster = new Raycaster();
   targetPos = new Vector3();
   dirVector = new Vector3();
+  nextPos = new Vector3();
   mouseIsDown = false;
   playerIsMoving = false;
   velocity = 10;
@@ -31,7 +42,8 @@ export class PlayerMovementState {
 
   constructor(
     private SceneState: SceneState,
-    private CameraState: CamerasState
+    private CameraState: CamerasState,
+    private WorldState: WorldState
   ) {}
 
   initPlayerMovement(clock: Clock, player: Group, playerBody: Body) {
@@ -94,13 +106,34 @@ export class PlayerMovementState {
         .normalize()
         .multiplyScalar(actualMoveSpeed);
 
+      this.dirVector.y = 0;
+
       // this.updateRay(this.player.position.clone(), this.dirVector.clone());
       // && !this.isPlayerColliding()
 
+      // this.playerBody.position.copy(this.player.position as any);
+      // this.playerBody.quaternion.copy(this.player.quaternion as any);
       this.playerBody.position.copy(this.player.position as any);
       this.playerBody.quaternion.copy(this.player.quaternion as any);
 
-      if (distanceToTarget > this.dirVector.length()) {
+      this.nextPos.copy(this.player.position).add(this.dirVector);
+
+      const nextPosIsCollidinAsIndex = this.WorldState.staticObjects.findIndex(
+        (item) => {
+          const box = item.box as Box3;
+
+          box
+            .copy(item.object.geometry.boundingBox)
+            .applyMatrix4(item.object.matrixWorld);
+
+          return box.containsPoint(this.nextPos);
+        }
+      );
+
+      if (
+        distanceToTarget > this.dirVector.length() &&
+        nextPosIsCollidinAsIndex === -1
+      ) {
         this.playerIsMoving = true;
         this.player.position.add(this.dirVector);
       } else {

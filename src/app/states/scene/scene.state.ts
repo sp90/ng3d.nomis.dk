@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { Body, BODY_TYPES, Box, Vec3 } from 'cannon-es';
 import {
   Box3,
   BoxGeometry,
@@ -29,7 +30,6 @@ export class SceneState {
   addBaseScene() {
     this.mainScene.background = new Color(0x3333ff);
 
-    this.addCollisionTestBox();
     this.addBasePlane();
     this.addSunLight();
   }
@@ -44,7 +44,6 @@ export class SceneState {
 
   private addCollisionTestBox() {
     const material = new MeshStandardMaterial({ color: new Color(0xff0000) });
-    const box = new Box3();
     const mesh = new Mesh(new BoxGeometry(3, 1, 3), material);
 
     mesh.castShadow = true;
@@ -56,8 +55,16 @@ export class SceneState {
       isStatic: true,
     };
 
-    mesh.geometry.computeBoundingBox();
+    const meshBody = new Body({
+      shape: new Box(new Vec3(3, 1, 3)),
+      type: BODY_TYPES.STATIC,
+    });
+    meshBody.position.set(0, 10, 0);
 
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+
+    // this.mainWorld.addBody(meshBody);
     this.addToScene(mesh);
   }
 

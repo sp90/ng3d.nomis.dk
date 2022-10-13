@@ -5,6 +5,7 @@ import { WorldState } from '@states/world/world.state';
 import { Body, Cylinder } from 'cannon-es';
 import {
   BoxGeometry,
+  BoxHelper,
   Clock,
   Color,
   CylinderGeometry,
@@ -15,15 +16,22 @@ import {
 } from 'three';
 import { PlayerMovementState } from './player-movement.state';
 
+const playerSize = 0.25;
 const playerHeight = 2;
 const playerSightHeight = 1.75;
+const playerSegments = 32;
 
 @Injectable({
   providedIn: 'root',
 })
 export class PlayerState {
   player: Group = new Group();
-  playerBodyShape = new Cylinder(0.25, 0.25, playerHeight, 20);
+  playerBodyShape = new Cylinder(
+    playerSize,
+    playerSize,
+    playerHeight,
+    playerSegments
+  );
   playerBody = new Body({
     mass: 80,
     shape: this.playerBodyShape,
@@ -47,7 +55,12 @@ export class PlayerState {
     const material = new MeshStandardMaterial({ color: new Color('teal') });
     const material2 = new MeshStandardMaterial({ color: new Color('yellow') });
     const playerMesh = new Mesh(
-      new CylinderGeometry(0.25, 0.25, playerHeight, 20),
+      new CylinderGeometry(
+        playerSize,
+        playerSize,
+        playerHeight,
+        playerSegments
+      ),
       material
     );
 
@@ -61,18 +74,22 @@ export class PlayerState {
     };
 
     this.playerBody.position.copy(playerMesh.position as any);
+    this.playerBody.boundingRadius = playerSize;
 
     // Direction mesh
     const playerDirMesh = new Mesh(new BoxGeometry(0.05, 0.05, 0.5), material2);
 
-    playerDirMesh.position.set(0, playerSightHeight, 0.25);
+    playerDirMesh.position.set(0, playerSightHeight, playerSize);
     playerDirMesh.userData = {
       noIntersect: true,
     };
 
+    const boxHelper = new BoxHelper(playerMesh, 0xffff00);
+
     // Add to player group
     this.player.add(playerDirMesh);
     this.player.add(playerMesh);
+    this.player.add(boxHelper);
     this.WorldState.mainWorld.addBody(this.playerBody);
 
     this.initPlayerCameraPos(this.camera, this.player);
