@@ -17,6 +17,9 @@ import {
 const PLAYER_COLLISION_RAY_NEAR = 0;
 const PLAYER_COLLISION_RAY_FAR = 100;
 
+/**
+ * Investigate how to use cannon-es to move the character around
+ */
 @Injectable({
   providedIn: 'root',
 })
@@ -30,14 +33,20 @@ export class PlayerMovementState {
   raycaster = new Raycaster();
   targetPos = new Vector3();
   dirVector = new Vector3();
+
+  // direction = new Vec3();
+  // target = new Vec3();
+
   nextPos = new Vector3();
+  // velocity = new Vector3();
   mouseIsDown = false;
   playerIsMoving = false;
-  velocity = 10;
+  fixedSpeed = 10;
 
   playerRay = new Raycaster();
   clock?: Clock;
   player?: Group;
+  playerBox?: Box3;
   playerBody?: Body;
 
   constructor(
@@ -46,9 +55,15 @@ export class PlayerMovementState {
     private WorldState: WorldState
   ) {}
 
-  initPlayerMovement(clock: Clock, player: Group, playerBody: Body) {
+  initPlayerMovement(
+    clock: Clock,
+    player: Group,
+    playerBox: Box3,
+    playerBody: Body
+  ) {
     this.clock = clock;
     this.player = player;
+    this.playerBox = playerBox;
     this.playerBody = playerBody;
     this.playerRay.far = PLAYER_COLLISION_RAY_FAR;
     this.playerRay.near = PLAYER_COLLISION_RAY_NEAR;
@@ -57,12 +72,8 @@ export class PlayerMovementState {
       .pipe(
         throttleTime(20),
         map((event) => this.mapMouseEvent(this, event)),
-        tap((targetPos) => {
-          if (targetPos) {
-            this.targetPos.copy(targetPos);
-            this.playerIsMoving = true;
-          }
-        })
+        throttleTime(20),
+        tap(() => (this.playerIsMoving = true))
       )
       .subscribe();
 
@@ -92,49 +103,24 @@ export class PlayerMovementState {
       this.player &&
       this.playerRay &&
       this.targetPos &&
+      this.playerBox &&
       this.playerBody &&
       this.playerIsMoving
     ) {
-      const actualMoveSpeed = delta * this.velocity; // velocity = 10 units
+      const velocity = 10;
+      const actualMoveSpeed = delta * velocity;
       const playerPos = this.player.position.clone();
       const distanceToTarget = playerPos.distanceTo(this.targetPos);
 
       this.player.lookAt(this.targetPos.x, playerPos.y, this.targetPos.z);
-
       this.dirVector
         .subVectors(this.targetPos, playerPos)
         .normalize()
         .multiplyScalar(actualMoveSpeed);
 
-      this.dirVector.y = 0;
-
-      // this.updateRay(this.player.position.clone(), this.dirVector.clone());
-      // && !this.isPlayerColliding()
-
-      // this.playerBody.position.copy(this.player.position as any);
-      // this.playerBody.quaternion.copy(this.player.quaternion as any);
-      this.playerBody.position.copy(this.player.position as any);
-      this.playerBody.quaternion.copy(this.player.quaternion as any);
-
-      this.nextPos.copy(this.player.position).add(this.dirVector);
-
-      const nextPosIsCollidinAsIndex = this.WorldState.staticObjects.findIndex(
-        (item) => {
-          const box = item.box as Box3;
-
-          box
-            .copy(item.object.geometry.boundingBox)
-            .applyMatrix4(item.object.matrixWorld);
-
-          return box.containsPoint(this.nextPos);
-        }
-      );
-
-      if (
-        distanceToTarget > this.dirVector.length() &&
-        nextPosIsCollidinAsIndex === -1
-      ) {
+      if (distanceToTarget > this.dirVector.length()) {
         this.playerIsMoving = true;
+        this.playerBody.position.copy(this.player.position as any);
         this.player.position.add(this.dirVector);
       } else {
         this.playerIsMoving = false;
@@ -160,9 +146,9 @@ export class PlayerMovementState {
 
       while (i--) {
         if (intersects[i].object.userData['isFloor'] === true) {
-          const targetPos = new Vector3().copy(intersects[i].point);
+          this.targetPos.copy(intersects[i].point);
 
-          return targetPos;
+          // this.target.set(intersects[i].point.x, 0, intersects[i].point.z);
         }
 
         if (i <= 0) {

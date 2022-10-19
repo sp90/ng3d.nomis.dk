@@ -4,6 +4,7 @@ import { SceneState } from '@states/scene/scene.state';
 import { WorldState } from '@states/world/world.state';
 import { Body, Cylinder } from 'cannon-es';
 import {
+  Box3,
   BoxGeometry,
   BoxHelper,
   Clock,
@@ -32,6 +33,7 @@ export class PlayerState {
     playerHeight,
     playerSegments
   );
+  playerBox = new Box3();
   playerBody = new Body({
     mass: 80,
     shape: this.playerBodyShape,
@@ -98,6 +100,7 @@ export class PlayerState {
     this.PlayerMovementState.initPlayerMovement(
       clock,
       this.player,
+      this.playerBox,
       this.playerBody
     );
 

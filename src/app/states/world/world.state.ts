@@ -100,7 +100,7 @@ export class WorldState {
     const groundBody = new Body({
       type: Body.STATIC, // can also be achieved by setting the mass to 0
       shape: new Plane(),
-      material: physicsMaterial,
+      // material: physicsMaterial,
     });
     groundBody.position.y = 0;
     groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0); // make it face up
