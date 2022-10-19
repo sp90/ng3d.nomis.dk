@@ -5,6 +5,7 @@ import { PlayerMovementState } from '@states/player/player-movement.state';
 import { PlayerState } from '@states/player/player.state';
 import { SceneState } from '@states/scene/scene.state';
 import { WorldState } from '@states/world/world.state';
+import CannonDebugger from 'cannon-es-debugger';
 import { Clock, WebGLRenderer } from 'three';
 import Stats from 'three/examples/jsm/libs/stats.module';
 
@@ -30,6 +31,11 @@ export class CanvasComponent implements AfterViewInit {
     const canvas = this.canvas?.nativeElement as HTMLCanvasElement;
     const clock = new Clock();
 
+    const cannonDebugger = CannonDebugger(
+      this.SceneState.mainScene,
+      this.WorldState.mainWorld
+    );
+
     if (canvas) {
       this.CanvasState.initSceneRenderer(canvas, (renderer: WebGLRenderer) => {
         this.PlayerState.readyPlayer(clock);
@@ -44,6 +50,7 @@ export class CanvasComponent implements AfterViewInit {
 
           _self.PlayerMovementState.tick(deltaTime);
           _self.WorldState.tick();
+          cannonDebugger.update();
 
           if (_self.PlayerState.player?.position) {
             _self.CameraState.setPosRelativeToPlayer(

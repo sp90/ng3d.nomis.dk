@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { CamerasState } from '@states/cameras/cameras.state';
 import { SceneState } from '@states/scene/scene.state';
 import { WorldState } from '@states/world/world.state';
-import { Body, Cylinder } from 'cannon-es';
+import { Body, BODY_TYPES, Cylinder } from 'cannon-es';
 import {
   Box3,
   BoxGeometry,
@@ -14,12 +14,13 @@ import {
   Mesh,
   MeshStandardMaterial,
   PerspectiveCamera,
+  Vector3,
 } from 'three';
 import { PlayerMovementState } from './player-movement.state';
 
 const playerSize = 0.25;
-const playerHeight = 2;
-const playerSightHeight = 1.75;
+export const playerHeight = 2;
+const playerSightHeight = 0.75;
 const playerSegments = 32;
 
 @Injectable({
@@ -37,14 +38,12 @@ export class PlayerState {
   playerBody = new Body({
     mass: 80,
     shape: this.playerBodyShape,
+    type: BODY_TYPES.KINEMATIC,
+    fixedRotation: true,
   });
 
   camera = this.CameraState.mainCamera;
-  cameraDistance = {
-    y: 7,
-    x: 5,
-    z: 5,
-  };
+  cameraDistance = new Vector3(7, 10, 7);
 
   constructor(
     private SceneState: SceneState,
@@ -67,7 +66,7 @@ export class PlayerState {
     );
 
     // Main player box
-    playerMesh.position.set(0, playerHeight / 2, 0);
+    playerMesh.position.set(0, 0, 0);
     playerMesh.geometry.computeBoundingBox();
     playerMesh.castShadow = true;
     playerMesh.receiveShadow = true;

@@ -7,7 +7,6 @@ import {
   ContactMaterial,
   GSSolver,
   Material,
-  Plane,
   Sphere,
   SplitSolver,
   Vec3,
@@ -18,9 +17,11 @@ import {
   Box3,
   BoxGeometry,
   Color,
+  Euler,
   Mesh,
   MeshNormalMaterial,
   MeshStandardMaterial,
+  PlaneGeometry,
   SphereGeometry,
 } from 'three';
 
@@ -54,6 +55,9 @@ export class WorldState {
 
   createTestWorldObj() {
     const physicsMaterial = new Material('physics');
+    physicsMaterial.friction = 0.8;
+    physicsMaterial.restitution = 0.0;
+
     const physics_physics = new ContactMaterial(
       physicsMaterial,
       physicsMaterial,
@@ -96,15 +100,30 @@ export class WorldState {
       object: mesh,
     });
 
+    const planeStartPos = -1;
+    const planeMaterial = new MeshStandardMaterial({ color: '0x999999' });
+    const planeGeometry = new PlaneGeometry(100, 100, 100, 100);
+    const plane = new Mesh(planeGeometry, planeMaterial);
+
+    plane.position.y = planeStartPos;
+    plane.quaternion.setFromEuler(new Euler(-Math.PI / 2, 0, 0));
+    plane.receiveShadow = true;
+    plane.userData = {
+      isFloor: true,
+    };
+
     // Create a static plane for the ground
+    const planeShape = new Box(new Vec3(50, 50, 0.1));
     const groundBody = new Body({
-      type: Body.STATIC, // can also be achieved by setting the mass to 0
-      shape: new Plane(),
-      // material: physicsMaterial,
+      type: Body.KINEMATIC, // can also be achieved by setting the mass to 0
+      shape: planeShape,
+
+      material: physicsMaterial,
     });
-    groundBody.position.y = 0;
+    groundBody.position.y = planeStartPos - 0.05;
     groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0); // make it face up
     this.mainWorld.addBody(groundBody);
+    this.SceneState.addToScene(plane);
 
     this.addCollisionTestBox([6, -0.5, -6], [3, 2, 3]);
     this.addCollisionTestBox([-6, -0.5, 6], [3, 2, 3]);
@@ -141,7 +160,7 @@ export class WorldState {
     };
 
     const meshBody = new Body({
-      shape: new Box(new Vec3(size[0], size[1], size[2])),
+      shape: new Box(new Vec3(size[0] / 2, size[1] / 2, size[2] / 2)),
       type: BODY_TYPES.STATIC,
     });
 

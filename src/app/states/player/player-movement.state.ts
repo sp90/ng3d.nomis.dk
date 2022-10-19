@@ -112,16 +112,18 @@ export class PlayerMovementState {
       const playerPos = this.player.position.clone();
       const distanceToTarget = playerPos.distanceTo(this.targetPos);
 
-      this.player.lookAt(this.targetPos.x, playerPos.y, this.targetPos.z);
+      this.player.lookAt(this.targetPos.x, 0, this.targetPos.z);
       this.dirVector
         .subVectors(this.targetPos, playerPos)
         .normalize()
         .multiplyScalar(actualMoveSpeed);
 
+      this.dirVector.y = 0;
+
       if (distanceToTarget > this.dirVector.length()) {
         this.playerIsMoving = true;
-        this.playerBody.position.copy(this.player.position as any);
         this.player.position.add(this.dirVector);
+        this.playerBody.position.copy(this.player.position as any);
       } else {
         this.playerIsMoving = false;
       }

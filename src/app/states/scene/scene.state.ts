@@ -10,7 +10,6 @@ import {
   Mesh,
   MeshStandardMaterial,
   Object3D,
-  PlaneGeometry,
   Scene,
 } from 'three';
 
@@ -30,7 +29,7 @@ export class SceneState {
   addBaseScene() {
     this.mainScene.background = new Color(0x3333ff);
 
-    this.addBasePlane();
+    // this.addBasePlane();
     this.addSunLight();
   }
 
@@ -68,22 +67,22 @@ export class SceneState {
     this.addToScene(mesh);
   }
 
-  private addBasePlane() {
-    const planeMaterial = new MeshStandardMaterial({ color: '0x999999' });
-    const planeGeometry = new PlaneGeometry(100, 100, 100, 100);
-    const plane = new Mesh(planeGeometry, planeMaterial);
+  // private addBasePlane() {
+  //   const planeMaterial = new MeshStandardMaterial({ color: '0x999999' });
+  //   const planeGeometry = new PlaneGeometry(100, 100, 100, 100);
+  //   const plane = new Mesh(planeGeometry, planeMaterial);
 
-    plane.position.y = 0;
-    plane.rotation.x = -Math.PI / 2;
-    plane.receiveShadow = true;
-    plane.userData = {
-      isFloor: true,
-    };
+  //   plane.position.y = 0;
+  //   plane.rotation.x = -Math.PI / 2;
+  //   plane.receiveShadow = true;
+  //   plane.userData = {
+  //     isFloor: true,
+  //   };
 
-    this.addToScene(plane);
+  //   this.addToScene(plane);
 
-    return plane;
-  }
+  //   return plane;
+  // }
 
   private addSunLight() {
     var hemiLight = new HemisphereLight(0xffffff, 0xffffff, 0.8);
